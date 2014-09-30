@@ -27,6 +27,7 @@ using namespace DirectX;
 struct SimpleVertex
 {
     XMFLOAT3 Pos;
+	XMFLOAT3 Norm;
     XMFLOAT4 Color;
 };
 
@@ -53,6 +54,8 @@ ID3D11DeviceContext1*   g_pImmediateContext1 = nullptr;
 IDXGISwapChain*         g_pSwapChain = nullptr;
 IDXGISwapChain1*        g_pSwapChain1 = nullptr;
 ID3D11RenderTargetView* g_pRenderTargetView = nullptr;
+ID3D11Texture2D*        g_pDepthStencil = nullptr;
+ID3D11DepthStencilView* g_pDepthStencilView = nullptr;
 ID3D11VertexShader*     g_pVertexShader = nullptr;
 ID3D11PixelShader*      g_pPixelShader = nullptr;
 ID3D11InputLayout*      g_pVertexLayout = nullptr;
@@ -329,7 +332,35 @@ HRESULT InitDevice()
     if( FAILED( hr ) )
         return hr;
 
-    g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, nullptr );
+	// Create depth stencil texture
+	D3D11_TEXTURE2D_DESC descDepth;
+	ZeroMemory(&descDepth, sizeof(descDepth));
+	descDepth.Width = width;
+	descDepth.Height = height;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+	hr = g_pd3dDevice->CreateTexture2D(&descDepth, nullptr, &g_pDepthStencil);
+	if (FAILED(hr))
+		return hr;
+
+	// Create the depth stencil view
+	D3D11_DEPTH_STENCIL_VIEW_DESC descDSV;
+	ZeroMemory(&descDSV, sizeof(descDSV));
+	descDSV.Format = descDepth.Format;
+	descDSV.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	descDSV.Texture2D.MipSlice = 0;
+	hr = g_pd3dDevice->CreateDepthStencilView(g_pDepthStencil, &descDSV, &g_pDepthStencilView);
+	if (FAILED(hr))
+		return hr;
+
+	g_pImmediateContext->OMSetRenderTargets( 1, &g_pRenderTargetView, g_pDepthStencilView );
 
     // Setup the viewport
     D3D11_VIEWPORT vp;
@@ -363,7 +394,8 @@ HRESULT InitDevice()
     D3D11_INPUT_ELEMENT_DESC layout[] =
     {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 	UINT numElements = ARRAYSIZE( layout );
 
@@ -394,16 +426,17 @@ HRESULT InitDevice()
         return hr;
 
     // Create vertex buffer
+	float n = 1 / sqrt(3);
     SimpleVertex vertices[] =
     {
-        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT4( 0.0f, 1.0f, 0.0f, 0.5f ) },
-        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT4( 1.0f, 1.0f, 0.0f, 0.5f ) },
-        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT4( 1.0f, 1.0f, 1.0f, 0.5f ) },
-        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT4( 0.0f, 1.0f, 1.0f, 0.5f ) },
-        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT4( 0.0f, 0.0f, 0.0f, 0.5f ) },
-        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT4( 1.0f, 0.0f, 0.0f, 0.5f ) },
-        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT4( 1.0f, 0.0f, 1.0f, 0.5f ) },
-        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT4( 0.0f, 0.0f, 1.0f, 0.5f ) },
+        { XMFLOAT3( -1.0f, 1.0f, -1.0f ), XMFLOAT3( -n, n, -n ), XMFLOAT4( 0.0f, 1.0f, 0.0f, 0.5f ) },
+        { XMFLOAT3( 1.0f, 1.0f, -1.0f ), XMFLOAT3( n, n, -n ), XMFLOAT4( 1.0f, 1.0f, 0.0f, 0.5f ) },
+        { XMFLOAT3( 1.0f, 1.0f, 1.0f ), XMFLOAT3( n, n, n ), XMFLOAT4( 1.0f, 1.0f, 1.0f, 0.5f ) },
+        { XMFLOAT3( -1.0f, 1.0f, 1.0f ), XMFLOAT3( -n, n, n ), XMFLOAT4( 0.0f, 1.0f, 1.0f, 0.5f ) },
+        { XMFLOAT3( -1.0f, -1.0f, -1.0f ), XMFLOAT3( -n, -n, -n ), XMFLOAT4( 0.0f, 0.0f, 0.0f, 0.5f ) },
+        { XMFLOAT3( 1.0f, -1.0f, -1.0f ), XMFLOAT3( n, -n, -n ), XMFLOAT4( 1.0f, 0.0f, 0.0f, 0.5f ) },
+        { XMFLOAT3( 1.0f, -1.0f, 1.0f ), XMFLOAT3( n, -n, n ), XMFLOAT4( 1.0f, 0.0f, 1.0f, 0.5f ) },
+        { XMFLOAT3( -1.0f, -1.0f, 1.0f ), XMFLOAT3( -n, -n, n ), XMFLOAT4( 0.0f, 0.0f, 1.0f, 0.5f ) },
     };
     D3D11_BUFFER_DESC bd;
 	ZeroMemory( &bd, sizeof(bd) );
@@ -498,6 +531,8 @@ void CleanupDevice()
     if( g_pVertexShader ) g_pVertexShader->Release();
     if( g_pPixelShader ) g_pPixelShader->Release();
     if( g_pRenderTargetView ) g_pRenderTargetView->Release();
+	if (g_pDepthStencil) g_pDepthStencil->Release();
+	if (g_pDepthStencilView) g_pDepthStencilView->Release();
     if( g_pSwapChain1 ) g_pSwapChain1->Release();
     if( g_pSwapChain ) g_pSwapChain->Release();
     if( g_pImmediateContext1 ) g_pImmediateContext1->Release();
@@ -563,6 +598,11 @@ void Render()
     // Clear the back buffer
     //
     g_pImmediateContext->ClearRenderTargetView( g_pRenderTargetView, Colors::Black );
+
+	//
+	// Clear the depth buffer to 1.0 (max depth)
+	//
+	g_pImmediateContext->ClearDepthStencilView(g_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
     //
     // Update variables
