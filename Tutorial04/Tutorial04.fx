@@ -15,23 +15,24 @@ cbuffer ConstantBuffer : register( b0 )
 }
 
 //--------------------------------------------------------------------------------------
-struct VS_OUTPUT
+struct VS_INPUT
 {
-    float4 Pos : SV_POSITION;
-	float3 Norm : SV_NORMAL;
+    float4 Pos : POSITION;
+    float3 Norm : NORMAL;
     float4 Color : COLOR0;
 };
 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
-VS_OUTPUT VS( float4 Pos : POSITION, float4 Color : COLOR )
+VS_INPUT VS( VS_INPUT input )
 {
-    VS_OUTPUT output = (VS_OUTPUT)0;
-    output.Pos = mul( Pos, World );
+    VS_INPUT output = (VS_INPUT)0;
+    output.Pos = mul( input.Pos, World );
     output.Pos = mul( output.Pos, View );
     output.Pos = mul( output.Pos, Projection );
-    output.Color = Color;
+    output.Norm = mul( float4(input.Norm, 1.0f), World ).xyz;
+    output.Color = input.Color;
     return output;
 }
 
@@ -41,5 +42,7 @@ VS_OUTPUT VS( float4 Pos : POSITION, float4 Color : COLOR )
 //--------------------------------------------------------------------------------------
 float4 PS( VS_OUTPUT input ) : SV_Target
 {
-    return input.Color;
+    float3 lightDir = float3(0.6f, -0.8f, 0.0f);
+    float d = dot( lightDir, input.Norm );
+    return input.Color * d;
 }
