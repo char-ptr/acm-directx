@@ -18,6 +18,7 @@ cbuffer ConstantBuffer : register( b0 )
 struct VS_OUTPUT
 {
     float4 Pos : SV_POSITION;
+	float3 Norm : SV_NORMAL;
     float4 Color : COLOR0;
 };
 
