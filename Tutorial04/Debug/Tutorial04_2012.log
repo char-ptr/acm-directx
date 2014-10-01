@@ -1,4 +1,4 @@
-﻿Build started 9/29/2014 11:33:58 PM.
+﻿Build started 9/30/2014 10:29:48 PM.
      1>Project "V:\acm-directx\Tutorial04\Tutorial04_2012.vcxproj" on node 2 (Build target(s)).
      1>C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V120\Microsoft.CppBuild.targets(388,5): warning MSB8028: The intermediate directory (Debug\) contains files shared from another project (Tutorial04.vcxproj).  This can lead to incorrect clean and rebuild behavior.
      1>FxCompile:
@@ -12,4 +12,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:00.54
+Time Elapsed 00:00:00.46
